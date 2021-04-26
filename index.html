@@ -18,8 +18,15 @@
         }
 
 
-        h1 {
+        .chart-headline {
             border: 2px solid green;
+            padding-bottom : 0;
+            margin-bottom : 0;
+        }
+
+        .chart-subtitle {
+            margin-top : 0;
+            padding-top : 0;
         }
     </style>
 </head>
@@ -36,7 +43,22 @@
 
         </svg>
         <p class="chart-notes">
-            Analysis by Quoctrung Bui and Justin Wolfers. Note: Official figures are seasonally adjusted. Source: Department of Labor.
+            Note: Analysis by Quoctrung Bui and Justin Wolfers, New York Times. Official figures are seasonally adjusted. Source: Department of Labor.
+        </p>
+    </div>
+    <hr>
+    <div class="chart-container">
+        <h1 class="chart-headline">
+            Title
+        </h1>
+        <h2 class="chart-subtitle">
+            Subtitle
+        </h2>
+        <svg id="stacked-chart" width="1050px" height="500px">
+
+        </svg>
+        <p class="chart-notes">
+            Notes and Sources
         </p>
     </div>
 </body>
@@ -46,11 +68,12 @@
 <!-- we're using d3 version 6 (the latest version) for all out work -->
 
 <script>
-    console.log(d3)
+    // console.log(d3)
     let width = 1050;
     let height = 500;
 
     let barchart = d3.select("body").select("#bar-chart")
+    let stackedchart = d3.select("body").select("#stacked-chart")
 
     //console.log
 
@@ -101,17 +124,27 @@
             .tickSize(width - margin.right - 50)
             .tickPadding(10) //distance from tick labels to tick marks
 
-        let xAxisSettings = d3.axisBottom(d3.scaleTime())
-            .tickSize(10)
-            .ticks(5)
-            // .tickFormat((d, i) => {
-            //     console.log(d, i)
-            //     if (i % 52 == 0) {
-            //         return d3.timeFormat("%Y")(new Date(d)) ///https://github.com/d3/d3-time-format
+        let xAxisSettings = d3.axisBottom(x) // d3.scaleTime())
+            .tickSize(0)//d => {
+            //     d = new Date(d)
+            //     if (d.getUTCMonth() == 0 & d.getUTCDate() <= 7) {
+            //         // return d3.timeFormat("%Y")(d)
+            //         return 10
             //     } else {
-            //         return ""
+            //         return 0
             //     }
-            // }) //what format do you want https://github.com/d3/d3-format 
+            // })
+            // .ticks(5)
+            .tickFormat(d => {
+                d = new Date(d)
+                if (d.getUTCMonth() == 0 & d.getUTCDate() <= 7) {
+                    // console.log(d)
+                    // return d3.timeFormat("%Y")(d)
+                    return d.getUTCFullYear()
+                } else {
+                    return ""
+                }
+            }) //what format do you want https://github.com/d3/d3-format 
             .tickPadding(10)
 
         //adding to the axes to our chart
@@ -128,18 +161,31 @@
             .style("stroke-width", ".5")
             .style("opacity", .7)
 
-        // let bars = svg.append("g")
-        //     .attr("class", "bars")
-        //     .selectAll(".bar")
-        //     .data(data)
-        //     .join("rect")
-        //     .attr("class", "bar")
-        //     .attr("x", d => x(0))
-        //     .attr("width", d => x(d.pop) - x(0))
-        //     .attr("y", d => y(d.group))
-        //     .attr("height", y.bandwidth())
+        let bars = barchart.append("g")
+            .attr("class", "bars")
+            .selectAll(".bar")
+            .data(data)
+            .join("rect")
+            .attr("class", "bar")
+            .attr("x", d => x(d.end))
+            .attr("width", x.bandwidth())
+            .attr("y", d => y(d.value))
+            .attr("height", d => y(0) - y(d.value))
+            .attr("fill", "#D35400")
 
+        let maxLabelA = barchart.append("text")
+            .text("3,283,000 claims")
+            .attr('x', 800)
+            .attr('y', 38)
+            .style("font-size", "20px")
+            .style("color", "#D35400")
 
+        let maxLabelB = barchart.append("text")
+            .text("the week after lockdown")
+            .attr('x', 800)
+            .attr('y', 53)
+            .style("font-size", "15px")
+            .style("color", "#D35400")
 
 
     })
