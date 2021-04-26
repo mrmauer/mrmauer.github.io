@@ -6,20 +6,20 @@
     <style>
         .chart-container {
             max-width: 1050px;
-            border: 3px solid red;
+            /*border: 3px solid red;*/
             margin: 0 auto;
             /* auto centers the div */
             font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
         }
 
         svg {
-            border: 2px solid purple;
+            /*border: 2px solid purple;*/
             overflow: visible;
         }
 
 
         .chart-headline {
-            border: 2px solid green;
+            /*border: 2px solid green;*/
             padding-bottom : 0;
             margin-bottom : 0;
         }
@@ -36,9 +36,9 @@
         <h1 class="chart-headline">
             More Than 3 Million Americans Lost Their Jobs
         </h1>
-        <h2 class="chart-subtitle">
+        <h3 class="chart-subtitle">
             Weekly jobless claims in the US
-        </h2>
+        </h3>
         <svg id="bar-chart" width="1050px" height="500px">
 
         </svg>
@@ -49,16 +49,16 @@
     <hr>
     <div class="chart-container">
         <h1 class="chart-headline">
-            Title
+            Few students from low-income families have access to the US's elite universities
         </h1>
-        <h2 class="chart-subtitle">
-            Subtitle
-        </h2>
+        <h3 class="chart-subtitle">
+            Where today’s 28-year-olds went to college, grouped by their parent's income.
+        </h3>
         <svg id="stacked-chart" width="1050px" height="500px">
 
         </svg>
         <p class="chart-notes">
-            Notes and Sources
+            Notes: Analysis by New York Times.
         </p>
     </div>
 </body>
@@ -75,26 +75,20 @@
     let barchart = d3.select("body").select("#bar-chart")
     let stackedchart = d3.select("body").select("#stacked-chart")
 
-    //console.log
-
-    //arrays
-    //objects
-    //functions
-    let margin = { top: 20, right: 40, bottom: 30, left: 30 };
 
 
     d3.csv("nat.csv").then(function (data) {
-        console.log("loaded")
+
+        let margin = { top: 20, right: 40, bottom: 30, left: 30 };
 
         data.forEach(d => {
             d.value = +d.value
-            // d.end = d.end
         })
 
         let weeks = data.map(d => d.end)
 
-        console.log({data})
-        console.log({weeks})
+        // console.log({data})
+        // console.log({weeks})
 
         let x = d3.scaleBand()
             .domain(weeks)
@@ -103,7 +97,7 @@
 
 
         let y = d3.scaleLinear()
-            .domain([0, d3.max(data.map(d => d.value))])
+            .domain([0, d3.max(data.map(d => d.value)) + 1e5])
             .range([height - margin.bottom, margin.top])
 
 
@@ -175,18 +169,186 @@
 
         let maxLabelA = barchart.append("text")
             .text("3,283,000 claims")
-            .attr('x', 800)
-            .attr('y', 38)
+            .attr('x', 815)
+            .attr('y', 40)
             .style("font-size", "20px")
-            .style("color", "#D35400")
+            .style("fill", "#D35400")
 
-        let maxLabelB = barchart.append("text")
+        barchart.append("text")
             .text("the week after lockdown")
-            .attr('x', 800)
-            .attr('y', 53)
+            .attr('x', 815)
+            .attr('y', 55)
             .style("font-size", "15px")
-            .style("color", "#D35400")
+            .style("fill", "#D35400")
+    })
 
+    d3.csv("college-selection-by-income-group-01-13.csv").then(function (data) {
+        console.log({data})
+
+        let margin = { top: 20, right: 40, bottom: 30, left: 75 };
+
+        const school_cats = [
+        'Ivy plus', 'Other elite', "Highly selective", 'Selective',
+        'Not selective', 'Two year or less', "For-profit",
+        'Not in college', 'Incomplete'
+        ];
+
+        let color = d3.scaleOrdinal()
+            .domain(school_cats)
+            .range(["#d73027","#f46d43","#fdae61","#fee08b","#ffffbf","#d9ef8b","#a6d96a","#66bd63","#1a9850"].reverse())
+            .unknown("#ccc")
+
+        data.forEach(d => {
+            d["For-profit"] = +d["For-profit"]
+            d["Highly selective"] = +d["Highly selective"]
+            d['Incomplete'] = +d['Incomplete']
+            d['Ivy plus'] = +d['Ivy plus']
+            d['Not in college'] = +d['Not in college']
+            d['Not selective'] = +d['Not selective']
+            d['Other elite'] = +d['Other elite']
+            d['Selective'] = +d['Selective']
+            d['Two year or less'] = +d['Two year or less']
+        })
+
+        let series = d3.stack().keys(school_cats)(data)
+
+        console.log({ series })
+
+        let y = d3.scaleBand()
+            .domain(data.map(d => d.income_group))
+            .range([height - margin.bottom, margin.top])
+            .paddingInner(0.1)
+
+        let x = d3.scaleLinear()
+            .domain([0, 1])
+            .rangeRound([margin.left, width-margin.right]) // range()
+
+        let xTickSettings = d3.axisBottom(x)
+            // .tickValues([])
+            .ticks(11)
+            .tickSize(5)
+            .tickPadding(12)
+            .tickFormat(d3.format(".0%"))
+
+        let xAxis = stackedchart.append("g")
+            .attr("class", "x axis")
+            .attr("transform", `translate(0,${height - margin.bottom})`)
+            .call(xTickSettings)
+
+        const ylabels = [
+            'Top 0.1%',
+            'Top 1%',
+            'Top 5%',
+            'Top 10%',
+            'Top 20%',
+            '4th quintile',
+            '3rd quintile',
+            '2nd quintile',
+            'Bottom 20%'
+        ].reverse()
+
+        let yTickSettings = d3.axisLeft(y)
+            // .tickValues([.5, 1])
+            .tickSize(5)
+            .tickPadding(4)
+            .tickFormat((d,i) => {
+                return ylabels[i]
+            })
+
+        let yAxis = stackedchart.append("g")
+            .attr("class", "y axis")
+            .attr("transform", `translate(${margin.left},0)`)
+            .call(yTickSettings)
+
+        let group = stackedchart.append("g")
+            .selectAll("g")
+            .data(series)
+            .join("g")
+            .attr("fill", d => color(d.key))
+
+        let bars = group
+            .selectAll("rect")
+            .data(d => d)
+            .join("rect")
+            .attr("y", (d, i) => y(d.data.income_group))
+            .attr("height", y.bandwidth())
+            .attr("x", d => x(d[0]))
+            .attr("width", d => x(d[1]) - x(d[0]))
+
+        stackedchart.append("text")
+            .text("Ivy plus")
+            .attr('x', 105)
+            .attr('y', 47)
+            .style("font-size", "15px")
+            .style("fill", "white")
+
+        stackedchart.append("text")
+            .text("Elite")
+            .attr('x', 275)
+            .attr('y', 47)
+            .style("font-size", "15px")
+            .style("fill", "white")
+
+        stackedchart.append("text")
+            .text("Highly selective")
+            .attr('x', 465)
+            .attr('y', 47)
+            .style("font-size", "15px")
+            .style("fill", "#2C3E50")
+
+        stackedchart.append("text")
+            .text("Selective")
+            .attr('x', 700)
+            .attr('y', 47)
+            .style("font-size", "15px")
+            .style("fill", "#2C3E50")
+
+        stackedchart.append("text")
+            .text("Two-year or less")
+            .attr('x', 250)
+            .attr('y', height - 49)
+            .style("font-size", "15px")
+            .style("fill", "#2C3E50")
+
+        stackedchart.append("text")
+            .text("For-profit")
+            .attr('x', 384)
+            .attr('y', height - 49)
+            .style("font-size", "15px")
+            .style("fill", "#2C3E50")
+
+        stackedchart.append("text")
+            .text("Not in college by age 22")
+            .attr('x', 630)
+            .attr('y', height - 49)
+            .style("font-size", "15px")
+            .style("fill", "white")
+
+        stackedchart.append("text")
+            .text("Incomplete")
+            .attr('x', 940)
+            .attr('y', height - 49)
+            .style("font-size", "15px")
+            .style("fill", "white")
+
+        stackedchart.append("text")
+            .text("Not selective")
+            .attr('x', 210)
+            .attr('y', height - 100)
+            .style("font-size", "15px")
+            .style("fill", "#2C3E50")
+
+        stackedchart.append("text")
+            .text("Parent's")
+            .attr('x', -50)
+            .attr('y', 80)
+            .style("font-size", "18px")
+
+        stackedchart.append("text")
+            .text("income")
+            .attr('x', -50)
+            .attr('y', 98)
+            .style("font-size", "18px")
 
     })
 
