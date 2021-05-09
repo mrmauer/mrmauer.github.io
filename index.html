@@ -28,10 +28,54 @@
             margin-top : 0;
             padding-top : 0;
         }
+
+        .tight-headline {
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .on-text {
+            color: rgba(0,0,0,1);
+        }
+
+        .off-text {
+            color: rgba(0,0,0,0.1);
+        }
+
+        .axis-label {
+            font-size: 18px;
+        }
+
+        .annotation {
+            font-size: 24px;
+        }
+
+        .legend-text {
+            font-size: 12px
+        }
     </style>
 </head>
 
 <body>
+    <div class="chart-container">
+        <h1 class="chart-headline">
+            More Americans are relying on public health insurance programs and fewer are uninsured than in 2009
+        </h1>
+        <h3 class="chart-subtitle">
+            The distribution of insurance status by household income
+        </h3>
+        <h1 class="tight-headline">
+            <span class="on-text">2009</span> 
+            <span class="off-text"> / 2020</span>
+        </h1>
+        <svg id="dancing-chart" width="1050px" height="500px">
+
+        </svg>
+        <p class="chart-notes">
+            Note: The income measure used here is disposable income, which is defined as market income plus cash transfers from the government and noncash benefits like food stamps and public housing. It excludes taxes, out-of-pocket medical spending, insurance premiums and other expenses. There have been small changes in the census questionnaire between the two survey dates. Source: Current Population Survey, analysis by Matt Bruenig. Reproduction of work by Quoctrung Bui at the New York Times.
+        </p>
+    </div>
+    <hr>
     <div class="chart-container">
         <h1 class="chart-headline">
             More Than 3 Million Americans Lost Their Jobs
@@ -74,7 +118,311 @@
 
     let barchart = d3.select("body").select("#bar-chart")
     let stackedchart = d3.select("body").select("#stacked-chart")
+    let dancingchart = d3.select("body").select("#dancing-chart")
 
+
+    d3.csv("healthcare-disposable-inc.csv").then(function (data) {
+
+        let margin = { top: 0, right: 50, bottom: 40, left: 10 };
+
+        // console.log({data})
+
+        data.forEach(d => {
+            d.Percentile = +d.Percentile
+            d.Medicaid = +d.Medicaid
+            d.Medicare = +d.Medicare
+            d['Medicare+Medicaid'] = +d['Medicare+Medicaid']
+            d.CHIP = +d.CHIP
+            d.Military = +d.Military
+            d['Direct Purchase'] = +d['Direct Purchase']
+            d.Employer = +d.Employer
+            d.Other = +d.Other
+            d['Subsidized Exchange'] = +d['Subsidized Exchange']
+            d.Uninsured = +d.Uninsured
+        })
+
+        // console.log({data})
+
+        let sel_cols = [
+            "Medicaid",
+            "Medicare",
+            "Medicare+Medicaid",
+            "Employer",
+            "Uninsured",
+            "Direct Purchase",
+            "Subsidized Exchange",
+            "CHIP",
+            "Military",
+            "Other"
+        ]
+
+        let sel_colors = [
+            "#f44336", // "Medicaid",
+            "#FF9800", // "Medicare",
+            "#FDD835", // "Medicare+Medicaid",
+            "#FFF8E1", // "Employer",
+            "#26A69A", // "Uninsured",
+            "#4DD0E1", // "Direct Purchase",
+            "#F06292", // "Subsidized Exchange",
+            "#5C6BC0", // "CHIP",
+            "#90A4AE", // "Military",
+            "#E0E0E0"  // "Other"
+        ]
+
+        let d2020 = [...data].filter(d => d.year == "2020")
+        let d2009 = [...data].filter(d => d.year == "2009")
+        let year = "2009"
+
+        // console.log({data09})
+        // console.log({data20})
+
+        //https://github.com/d3/d3-shape#stacks
+        let series2020 = d3.stack().keys(sel_cols)(d2020);
+        let series2009 = d3.stack().keys(sel_cols)(d2009);
+
+        console.log({series2009})
+
+        // https://github.com/d3/d3-scale#ordinal-scales
+        let color = d3.scaleOrdinal()
+            .domain(sel_cols)
+            .range(sel_colors)
+
+        let x = d3.scaleLinear()
+            .domain([0, 100])
+            .range([margin.left, width-margin.right])
+
+        let y = d3.scaleLinear()
+            .domain([0, 1])
+            .range([height - margin.bottom, margin.top])
+
+        //https://github.com/d3/d3-shape#areas
+        let area = d3.area()
+            .x(d => x(d.data.Percentile))
+            .y0(d => y(d[0]))
+            .y1(d => y(d[1]))
+
+        let xAxisSettings = d3.axisBottom(x)
+            .tickSize(6)
+            .tickPadding(6)
+            .ticks(10)
+            .tickValues([5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 95]) //
+            .tickFormat(l => d3.format(".0f")(l) + '%')
+
+        let xAxis = dancingchart.append("g")
+            .attr("class", "x axis")
+            .call(xAxisSettings)
+            .call(g => g.selectAll(".domain").remove())
+            .attr("transform", `translate(0,${height - margin.bottom})`)
+
+
+        let yAxisSettings = d3.axisLeft(y)
+            .tickValues([.2, .4, .6, .8])
+            .tickSize(-10)
+            .tickPadding(4)
+            .tickFormat(d3.format(".0%"))
+
+        let yAxis = dancingchart.append("g")
+            .attr("class", "y axis")
+            .call(yAxisSettings)
+            .call(g => g.selectAll(".domain").remove())
+
+        let paths = dancingchart.append("g")
+            .selectAll("path")
+            .data(series2009)
+            .join("path")
+            .attr("class", d =>  {
+                return d.key
+            })
+            .attr("fill", d => color(d.key))
+            .attr("d", area)
+
+        dancingchart.append("text")
+            .attr("class", "axis-label")
+            .attr("x", width / 2)
+            .attr("y", height)
+            .text("Income Percentile")
+            .attr("text-anchor", "middle")
+
+        // ANNOTATIONS ----------
+
+        dancingchart.append("text")
+            .attr("class", "annotation")
+            .attr("x", margin.left+150)
+            .attr("y", margin.top+120)
+            .text("Uninsured")
+            .attr("text-anchor", "middle")
+            .style("fill", "white")
+
+        dancingchart.append("text")
+            .attr("class", "annotation")
+            .attr("x", width-margin.right-200)
+            .attr("y", height/2)
+            .text("Employer")
+            .attr("text-anchor", "middle")
+
+        dancingchart.append("text")
+            .attr("class", "annotation")
+            .attr("x", margin.left+120)
+            .attr("y", height-margin.bottom-50)
+            .text("Medicare")
+            .attr("text-anchor", "middle")
+            .style("fill", "white")
+
+        dancingchart.append("text")
+            .attr("class", "annotation")
+            .attr("x", margin.left+110)
+            .attr("y", height-margin.bottom-150)
+            .text("Medicaid")
+            .attr("text-anchor", "middle")
+            .style("fill", "white")
+
+        // LEGEND ---------
+
+        let legend_cols = [
+            "Medicare+Medicaid",
+            "Direct Purchase",
+            "Subsidized Exchange",
+            "CHIP",
+            "Military",
+            "Other"
+        ]
+
+        // let legend_colors = [
+        //     "#FDD835", // "Medicare+Medicaid",
+        //     "#4DD0E1", // "Direct Purchase",
+        //     "#F06292", // "Subsidized Exchange",
+        //     "#5C6BC0", // "CHIP",
+        //     "#90A4AE", // "Military",
+        //     "#E0E0E0"  // "Other"
+        // ]
+
+        // Add one dot in the legend for each name.
+        dancingchart.selectAll("mydots")
+            .data(legend_cols)
+            .enter()
+            .append("circle")
+                .attr("cx", width-margin.right + 15)
+                .attr("cy", function(d,i){ return margin.top + 15 + i*18}) // 100 is where the first dot appears. 25 is the distance between dots
+                .attr("r", 7)
+                .style("fill", function(d){ return color(d)})
+
+        dancingchart.selectAll("mylabels")
+            .data(legend_cols)
+            .enter()
+            .append("text")
+                .attr("x", width-margin.right + 30)
+                .attr("y", function(d,i){ return margin.top + 15 + i*18}) // 100 is where the first dot appears. 25 is the distance between dots
+                // .style("fill", function(d){ return color(d)}) // color code legend text
+                .text(function(d){ return d})
+                .attr("text-anchor", "left")
+                .attr("class", "legend-text")
+                .style("alignment-baseline", "middle")
+
+        // Dynamic Headline
+
+        let hed = d3.select(".tight-headline")
+
+        function dance(filtered_data) {
+            
+            // dancingchart
+            //     .selectAll("path")
+            paths // alternative to above two lines ??
+                .data(filtered_data, d => d.key)
+                .transition()
+                .duration(300)
+                .ease(d3.easeLinear)
+                .attr("d", area);
+
+        }
+
+        function update() {
+            // console.log("update")
+            // console.log("old year state " + year);
+
+            if (year == "2009") {
+                year = "2020"
+                dance(series2020)
+                hed.html("<span class='off-text'>2009 / </span><span class='on-text'>2020</span>")
+
+                dancingchart.selectAll(".annotation")
+                    .remove()
+
+                dancingchart.append("text")
+                    .attr("class", "annotation")
+                    .attr("x", margin.left+150)
+                    .attr("y", margin.top+120-40)
+                    .text("Uninsured")
+                    .attr("text-anchor", "middle")
+                    .style("fill", "white")
+
+                dancingchart.append("text")
+                    .attr("class", "annotation")
+                    .attr("x", width-margin.right-200)
+                    .attr("y", height/2-20)
+                    .text("Employer")
+                    .attr("text-anchor", "middle")
+
+                dancingchart.append("text")
+                    .attr("class", "annotation")
+                    .attr("x", margin.left+120)
+                    .attr("y", height-margin.bottom-50-30)
+                    .text("Medicare")
+                    .attr("text-anchor", "middle")
+                    .style("fill", "white")
+
+                dancingchart.append("text")
+                    .attr("class", "annotation")
+                    .attr("x", margin.left+110)
+                    .attr("y", height-margin.bottom-150-40)
+                    .text("Medicaid")
+                    .attr("text-anchor", "middle")
+                    .style("fill", "white")
+
+            } else {
+                year = "2009"
+                dance(series2009)
+                hed.html("<span class='on-text'>2009</span><span class='off-text'> / 2020</span>")
+
+                dancingchart.selectAll(".annotation")
+                    .remove()
+
+                dancingchart.append("text")
+                    .attr("class", "annotation")
+                    .attr("x", margin.left+150)
+                    .attr("y", margin.top+120)
+                    .text("Uninsured")
+                    .attr("text-anchor", "middle")
+                    .style("fill", "white")
+
+                dancingchart.append("text")
+                    .attr("class", "annotation")
+                    .attr("x", width-margin.right-200)
+                    .attr("y", height/2)
+                    .text("Employer")
+                    .attr("text-anchor", "middle")
+
+                dancingchart.append("text")
+                    .attr("class", "annotation")
+                    .attr("x", margin.left+120)
+                    .attr("y", height-margin.bottom-50)
+                    .text("Medicare")
+                    .attr("text-anchor", "middle")
+                    .style("fill", "white")
+
+                dancingchart.append("text")
+                    .attr("class", "annotation")
+                    .attr("x", margin.left+110)
+                    .attr("y", height-margin.bottom-150)
+                    .text("Medicaid")
+                    .attr("text-anchor", "middle")
+                    .style("fill", "white")
+            }
+            // console.log("new year: " + year);
+        }
+
+        var timer = d3.interval(update, 4000) //in milliseconds
+
+    })
 
 
     d3.csv("nat.csv").then(function (data) {
