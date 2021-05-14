@@ -6,20 +6,20 @@
     <style>
         .chart-container {
             max-width: 1050px;
-            border: 3px solid red;
+            /*border: 3px solid red;*/
             margin: 0 auto;
             /* auto centers the div */
             font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
         }
 
         svg {
-            border: 2px solid purple;
+            /*border: 2px solid purple;*/
             overflow: visible;
         }
 
 
         h1 {
-            border: 2px solid green;
+            /*border: 2px solid green;*/
         }
 
         .pop-up {
@@ -31,6 +31,7 @@
             pointer-events: none;
             background-color: white;
             padding: 10px;
+            opacity: 0;
         }
 
     </style>
@@ -41,7 +42,7 @@
 <body>
     <div class="chart-container">
         <h1 class="headline">
-            D3 starter template
+            The number of children in poverty in US counties
         </h1>
 
         <svg width="1050px" height="500px">
@@ -83,7 +84,7 @@
         let width = 1050;
         let height = 500;
 
-        console.log({county}, {state})
+        // console.log({county}, {state})
 
         let svg = d3.select("body").select("svg")
 
@@ -123,7 +124,7 @@
             .data(county.features.filter(d => {
                 return (d.properties.pop_18_in_poverty != null &
                     d.properties.Geo_QName != null & 
-                    d.properties.GEOID.slice(0,2) != '72')
+                    d.properties.GEOID.slice(0,2) != '72') // remove Peurto Rico
             }))
             .join("circle")
             .attr("class", function (d) { 
@@ -147,20 +148,18 @@
 
         counties.on("mouseover", (event, d) => {
 
-            counties
-                .style("stroke-width", .3)
-                .style("opacity", 0.5)
+            // counties
+            //     .style("stroke-width", .3)
+            //     .style("opacity", 0.5)
 
             svg.select(".p-" + d.properties.GEOID)
                 .style("stroke-width", 2)
                 .style("opacity", 1)
                 .raise()
 
-            let reScaleLang = d3.scaleThreshold()
-                .domain([0]) //make sure to put this in brackets!
-                .range(["below", "above"])
-
-            let diff = +d.mnav3poolgcs - 3
+            // let reScaleLang = d3.scaleThreshold()
+            //     .domain([0]) //make sure to put this in brackets!
+            //     .range(["below", "above"])
 
             let lang = d.properties.Geo_QName + ":<br>"
             lang += d3.format(",.0f")(d.properties.pop_18_in_poverty) + " children"
@@ -174,9 +173,13 @@
         })
 
 
-        points.on("mouseout", (event, d) => {
+        counties.on("mouseout", (event, d) => {
             // console.log(event)
-            counties
+            // counties
+            //     .style("stroke-width", .3)
+            //     .style("opacity", 0.5)
+
+            svg.select(".p-" + d.properties.GEOID)
                 .style("stroke-width", .3)
                 .style("opacity", 0.5)
 
