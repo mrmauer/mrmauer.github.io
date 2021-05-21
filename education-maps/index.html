@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        .chart-container {
+            max-width: 1050px;
+            /*border: 3px solid red;*/
+            margin: 0 auto;
+            /* auto centers the div */
+            font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+        }
+
+        svg {
+            /*border: 2px solid purple;*/
+            overflow: visible;
+        }
+
+        .chart-headline {
+            padding-bottom : 0;
+            margin-bottom : 0;
+        }
+
+        .chart-subtitle {
+            margin-top : 0;
+            padding-top : 0;
+        }   
+
+        /*h1 {
+            border: 2px solid green;
+        }*/
+
+        .pop-up {
+            position: absolute;
+            border: 1px solid black;
+            border-radius: 1px;
+            line-height: 1.2;
+            width: 200px;
+            pointer-events: none;
+            background-color: white;
+            padding: 10px;
+            opacity: 0;
+        }
+
+    </style>
+    <!-- add your script blocks at the end -->
+
+</head>
+
+<body>
+    <div class="chart-container">
+        <h1 class="chart-headline">
+            Students in the south have fallen through the cracks of the educational system.
+        </h1>
+        <h2 class="chart-subtitle">
+            The percentage of adults without a high school diploma.
+        </h2>
+
+        <svg width="1050px" height="500px">
+        </svg>
+        <p class="chart-notes">
+            Source: USDA, Economic Research Service.
+        </p>
+
+        <div class="pop-up">
+        </div>
+
+    </div>
+</body>
+
+
+<!-- we're using d3 version 6 (the latest version) for all out work -->
+<script src="https://d3js.org/d3.v6.min.js"></script>
+
+<!-- load topojson script -->
+<script src="https://unpkg.com/topojson@3"></script>
+
+<script>
+    // console.log({ d3 })
+    // console.log({ topojson })
+
+    // //https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise
+    Promise.all([ //waits for all the data to load, then when loaded will return it all in one array called res
+        d3.json('no_hs_topo.json'),
+    ])
+        .then(ready)
+        .catch((err) => {
+            console.log(err);
+        });
+
+    function ready(res) {
+        // console.log(res[0])
+        let raw = res[0]
+
+        let county = topojson.feature(raw, raw.objects.out);
+        let state = topojson.feature(raw, raw.objects.state);
+
+        let width = 1050;
+        let height = 500;
+
+        console.log({county}, {state})
+
+        let svg = d3.select("body").select("svg")
+
+        let myProjection = d3.geoAlbersUsa()
+            .fitSize([width, height], state)
+
+        //path function
+        let path = d3.geoPath()
+            .projection(myProjection)
+
+        let innerlines = topojson.mesh(raw, raw.objects.state, 
+            function (a, b) {
+            return a != b;
+        });
+
+        let color = d3.scaleThreshold()
+            .domain([5,7.5,10,12.5,15,17.5,20,25])
+            .range(d3.schemeReds[9]);
+
+
+        let counties = svg.selectAll(".counties")
+            .data(county.features)
+            .join("path")
+            .attr("d", path)
+            .style("fill", d => {
+                return color(d.properties.perc_no_hs_2019)
+            })
+            .attr("class", function (d) { 
+                return "county p-" + d.properties.GEOID 
+            })
+            .style("stroke", "white")
+            .style("stroke-width", 0.2)
+            // .style("pointer-events", "none")
+
+        let states = svg
+            .append("path")
+            .attr("d", path(innerlines))
+            .style("fill", "none")
+            .style("stroke", "white")
+            .style("stroke-width", 1)
+            .style("pointer-events", "none")
+
+
+        // LEGEND --------
+
+        console.log(color.invertExtent("#fff5f0"))
+
+        var x = d3.scaleLinear()
+            .domain([0, 30])
+            .rangeRound([600, 860]);
+
+        var g = svg.append("g")
+            .attr("class", "key")
+            .attr("transform", "translate(0,20)");
+
+        g.selectAll("rect")
+            .data(color.range().map(function(d) {
+                d = color.invertExtent(d);
+                if (d[0] == undefined) d[0] = x.domain()[0];
+                if (d[1] == undefined) d[1] = x.domain()[1];
+                return d;
+            }))
+            .join("rect")
+            .attr("height", 8)
+            .attr("x", function(d) { return x(d[0]); })
+            .attr("width", function(d) { return x(d[1]) - x(d[0]); })
+            .attr("fill", function(d) { return color(d[0]); });
+
+        g.append("text")
+            .attr("class", "caption")
+            .attr("x", x.range()[0])
+            .attr("y", -6)
+            .attr("fill", "#000")
+            .attr("text-anchor", "start")
+            .attr("font-weight", "bold")
+            .text("");
+
+        g.call(d3.axisBottom(x)
+            .tickSize(13)
+            .tickFormat(function(x, i) { return i ? x : x + "%"; })
+            .tickValues(color.domain()))
+            .select(".domain")
+            .remove();
+
+        // TOOLTIP -------   
+        let popup = d3.select(".pop-up");
+
+        counties.on("mouseover", (event, d) => {
+
+            // counties
+            //     .style("stroke-width", .3)
+            //     .style("opacity", 0.5)
+
+            svg.select(".p-" + d.properties.GEOID)
+                .style("stroke-width", 2.5)
+
+            let lang = d.properties.county + ", " 
+            lang += d.properties.state + ":<br><strong>"
+            lang += d3.format(".1f")(d.properties.perc_no_hs_2019)
+            lang += "</strong>% of adults without a high school diploma"
+
+            popup
+                .style("opacity", 1)
+                .style("left", (event.x - 100) + "px")
+                .style("top", (event.y - 100) + "px")
+                .html(lang)
+
+        })
+
+
+        counties.on("mouseout", (event, d) => {
+
+            svg.select(".p-" + d.properties.GEOID)
+                .style("stroke-width", .2)
+
+            popup
+                .style("opacity", 0)
+
+        })
+
+    }
+
+
+
+
+
+
+
+
+</script>
