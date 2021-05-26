@@ -411,7 +411,7 @@
         let width = 1050;
         let height = 500;
 
-        console.log({county}, {state})
+        // console.log({county}, {state})
 
         let svg = d3.select("body").select("#col_map")
 
@@ -570,7 +570,7 @@
     function no_hs(res) {
         // console.log(res[0])
 
-        console.log("NO HIGH SCHOOL MAP!")
+        // console.log("NO HIGH SCHOOL MAP!")
 
         let raw = res[0]
 
@@ -580,7 +580,7 @@
         let width = 1050;
         let height = 500;
 
-        console.log({county}, {state})
+        // console.log({county}, {state})
 
         let svg = d3.select("body").select("#no_hs_map")
 
@@ -670,23 +670,19 @@
 
             if (year == 1970) {
                 year += 10
-                dance("no_hs_1980", transition_time)
-                hed.html("<span class='off-text'>2009 / </span><span class='on-text'>2020</span>")
+                dance("no_hs_" + String(year), transition_time)
             } else if (year == 1980) {
                 year += 10
-                dance("no_hs_1990", transition_time)
-                // hed.html("<span class='on-text'>2009</span><span class='off-text'> / 2020</span>")
+                dance("no_hs_" + String(year), transition_time)
             } else if (year == 1990) {
                 year += 10
-                dance("no_hs_2000", transition_time)
-                // title change
+                dance("no_hs_" + String(year), transition_time)
             } else if (year == 2000) {
                 year += 19
-                dance("no_hs_2019", transition_time)
-                // title change
+                dance("no_hs_" + String(year), transition_time)
             } else {
                 year = 1970
-                dance("no_hs_1970", 0)
+                dance("no_hs_" + String(year), 0)
             }
 
             // console.log("new year: " + String(year));
