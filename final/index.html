@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        .chart-container {
+            max-width: 1050px;
+            /*border: 3px solid red;*/
+            margin: 0 auto;
+            /* auto centers the div */
+            font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+        }
+
+        svg {
+            /*border: 2px solid purple;*/
+            overflow: visible;
+        }
+
+        .chart-headline {
+            padding-bottom : 0;
+            margin-bottom : 0;
+        }
+
+        .chart-subtitle {
+            margin-top : 0;
+            padding-top : 0;
+        }   
+
+        /*h1 {
+            border: 2px solid green;
+        }*/
+
+        .map-year {
+            text-align: center;
+        }
+
+        /*.pop-up {
+            position: absolute;
+            border: 1px solid black;
+            border-radius: 1px;
+            line-height: 1.2;
+            width: 200px;
+            pointer-events: none;
+            background-color: white;
+            padding: 10px;
+            opacity: 0;
+        }*/
+
+    </style>
+    <!-- add your script blocks at the end -->
+
+</head>
+
+<body>
+    <div class="chart-container">
+        <h1 class="chart-headline">
+            Diverging patterns in educational attainment across America
+        </h1>
+        <hr></hr>
+        <h2 class="chart-subtitle">
+            The percentage of adults without a high school diploma.
+        </h2>
+        <svg id="no_hs_map" width="1050px" height="500px">
+        </svg>
+        <p>
+            Some text describing the trend. and some space between the two charts.
+        </p>
+        <svg id="no_hs_lines" width="1050px" height="500px">
+        </svg>
+        <p>
+            Some text describing the trend. and some space between the two charts.
+        </p>
+        <h2 class="chart-subtitle">
+            The percentage of adults with a bachelors degree
+        </h2>
+        <svg id="col_map" width="1050px" height="500px">
+        </svg>
+        <p>
+            Some text describing the trend. and some space between the two charts.
+        </p>
+        <svg id="col_lines" width="1050px" height="500px">
+        </svg>
+        <p>
+            Some text describing the trend. and some space between the two charts.
+        </p>
+        <p class="chart-notes">
+            Source: USDA, Economic Research Service.
+        </p>
+
+        <div class="pop-up">
+        </div>
+
+    </div>
+</body>
+
+
+<!-- we're using d3 version 6 (the latest version) for all out work -->
+<script src="https://d3js.org/d3.v6.min.js"></script>
+
+<!-- load topojson script -->
+<script src="https://unpkg.com/topojson@3"></script>
+
+<script>
+    // console.log({ d3 })
+    // console.log({ topojson })
+
+    // let no_hs_map = d3.select('#no_hs_map')
+
+
+    // //https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise
+    const promise = Promise.all([ //waits for all the data to load, then when loaded will return it all in one array called res
+        d3.json('county_ed_albers_topo.json'),
+    ])
+
+    promise.then(no_hs)
+        .catch((err) => {
+            console.log(err);
+        });
+
+    promise.then(college)
+        .catch((err) => {
+            console.log(err);
+        });
+
+    function college(res) {
+        console.log("COLLEGE MAP!")
+
+        let raw = res[0]
+
+        let county = topojson.feature(raw, raw.objects.counties);
+        let state = topojson.feature(raw, raw.objects.states);
+
+        let width = 1050;
+        let height = 500;
+
+        console.log({county}, {state})
+
+        let svg = d3.select("body").select("#col_map")
+
+        let myProjection = d3.geoAlbersUsa()
+            .fitSize([width, height], state)
+
+        //path function
+        let path = d3.geoPath()
+            .projection(myProjection)
+
+        let innerlines = topojson.mesh(raw, raw.objects.states, 
+            function (a, b) {
+            return a != b;
+        });
+
+        let color = d3.scaleThreshold()
+            .domain([-15,-10,-5,0,5,10,15])
+            .range(
+                ["#762a83","#9970ab","#c2a5cf","#e7d4e8","#d9f0d3","#a6dba0","#5aae61","#1b7837"]
+            );
+
+
+        let counties = svg.selectAll(".counties2")
+            .data(county.features)
+            .join("path")
+            .attr("d", path)
+            .style("fill", d => {
+                return color(d.properties['col_1970'])
+            })
+            // .attr("class", function (d) { 
+            //     return "county p-" + d.properties.GEOID 
+            // })
+            // .style("stroke", "white")
+            // .style("stroke-width", 0.2)
+            // .style("pointer-events", "none")
+
+        let states = svg
+            .append("path")
+            .attr("d", path(innerlines))
+            .style("fill", "none")
+            .style("stroke", "white")
+            .style("stroke-width", 1)
+            .style("pointer-events", "none")
+
+        let year = 1970
+
+        svg.append("text")
+            .attr("class", "annotation")
+            .attr("x", width/2 - 20)
+            .attr("y", height/2 - 20)
+            .text(String(year))
+            .attr("text-anchor", "middle")
+            .attr("font-size", "36px")
+            .attr("font-weight", "bold")
+
+        function dance(year_key, t) {
+            
+            // dancingchart
+            //     .selectAll("path")
+            counties
+                .data(county.features)
+                .transition()
+                .duration(t * 1000)
+                .ease(d3.easeLinear)
+                .style("fill", d => {
+                    return color(d.properties[year_key])
+                })
+
+            svg.selectAll(".annotation")
+                    .remove()
+
+            svg.append("text")
+                .attr("class", "annotation")
+                .attr("x", width/2 - 20)
+                .attr("y", height/2 - 20)
+                .text(String(year))
+                .attr("text-anchor", "middle")
+                .attr("font-size", "36px")
+                .attr("font-weight", "bold")
+                // .style("fill", "black")
+
+        }
+
+        const transition_time = 1
+        function update() {
+            // console.log("update")
+            // console.log("old year state " + year);
+
+            if (year == 1970) {
+                year += 10
+                dance("col_" + String(year), transition_time)
+            } else if (year == 1980) {
+                year += 10
+                dance("col_" + String(year), transition_time)
+            } else if (year == 1990) {
+                year += 10
+                dance("col_" + String(year), transition_time)
+            } else if (year == 2000) {
+                year += 19
+                dance("col_" + String(year), transition_time)
+            } else {
+                year = 1970
+                dance("col_1970", 0)
+            }
+
+
+
+            // console.log("new year: " + String(year));
+        }
+
+        var timer = d3.interval(update, 3000) //in milliseconds
+
+
+        // LEGEND --------
+
+        // console.log(color.invertExtent("#fff5f0"))
+
+        var x = d3.scaleLinear()
+            .domain([-20, 20])
+            .rangeRound([600, 860]);
+
+        var g = svg.append("g")
+            .attr("class", "key")
+            .attr("transform", "translate(0,20)");
+
+        g.selectAll("rect")
+            .data(color.range().map(function(d) {
+                d = color.invertExtent(d);
+                if (d[0] == undefined) d[0] = x.domain()[0];
+                if (d[1] == undefined) d[1] = x.domain()[1];
+                return d;
+            }))
+            .join("rect")
+            .attr("height", 8)
+            .attr("x", function(d) { return x(d[0]); })
+            .attr("width", function(d) { return x(d[1]) - x(d[0]); })
+            .attr("fill", function(d) { return color(d[0]); });
+
+        g.append("text")
+            .attr("class", "caption")
+            .attr("x", x.range()[0])
+            .attr("y", -6)
+            .attr("fill", "#000")
+            .attr("text-anchor", "start")
+            .text("Percentage above/below the national average");
+
+        g.call(d3.axisBottom(x)
+            .tickSize(13)
+            .tickFormat(function(x, i) { return i ? x : x + "%"; })
+            .tickValues(color.domain()))
+            .select(".domain")
+            .remove();
+
+    }
+
+    function no_hs(res) {
+        // console.log(res[0])
+
+        let raw = res[0]
+
+        let county = topojson.feature(raw, raw.objects.counties);
+        let state = topojson.feature(raw, raw.objects.states);
+
+        let width = 1050;
+        let height = 500;
+
+        console.log({county}, {state})
+
+        let svg = d3.select("body").select("#no_hs_map")
+
+        let myProjection = d3.geoAlbersUsa()
+            .fitSize([width, height], state)
+
+        //path function
+        let path = d3.geoPath()
+            .projection(myProjection)
+
+        let innerlines = topojson.mesh(raw, raw.objects.states, 
+            function (a, b) {
+            return a != b;
+        });
+
+        let color = d3.scaleThreshold()
+            .domain([-15,-10,-5,0,5,10,15])
+            .range(
+                ["#762a83","#9970ab","#c2a5cf","#e7d4e8","#d9f0d3","#a6dba0","#5aae61","#1b7837"].reverse());
+
+
+        let counties = svg.selectAll(".counties")
+            .data(county.features)
+            .join("path")
+            .attr("d", path)
+            .style("fill", d => {
+                return color(d.properties['no_hs_1970'])
+            })
+            // .attr("class", function (d) { 
+            //     return "county p-" + d.properties.GEOID 
+            // })
+            // .style("stroke", "white")
+            // .style("stroke-width", 0.2)
+            // .style("pointer-events", "none")
+
+        let states = svg
+            .append("path")
+            .attr("d", path(innerlines))
+            .style("fill", "none")
+            .style("stroke", "white")
+            .style("stroke-width", 1)
+            .style("pointer-events", "none")
+
+        let year = 1970
+
+        svg.append("text")
+            .attr("class", "annotation")
+            .attr("x", width/2 - 20)
+            .attr("y", height/2 - 20)
+            .text(String(year))
+            .attr("text-anchor", "middle")
+            .attr("font-size", "36px")
+            .attr("font-weight", "bold")
+
+        function dance(year_key, t) {
+            
+            // dancingchart
+            //     .selectAll("path")
+            counties
+                .data(county.features)
+                .transition()
+                .duration(t * 1000)
+                .ease(d3.easeLinear)
+                .style("fill", d => {
+                    return color(d.properties[year_key])
+                })
+
+            svg.selectAll(".annotation")
+                    .remove()
+
+            svg.append("text")
+                .attr("class", "annotation")
+                .attr("x", width/2 - 20)
+                .attr("y", height/2 - 20)
+                .text(String(year))
+                .attr("text-anchor", "middle")
+                .attr("font-size", "36px")
+                .attr("font-weight", "bold")
+                // .style("fill", "black")
+
+        }
+
+        const transition_time = 1
+        function update() {
+            // console.log("update")
+            // console.log("old year state " + year);
+
+            if (year == 1970) {
+                year += 10
+                dance("no_hs_1980", transition_time)
+                hed.html("<span class='off-text'>2009 / </span><span class='on-text'>2020</span>")
+            } else if (year == 1980) {
+                year += 10
+                dance("no_hs_1990", transition_time)
+                // hed.html("<span class='on-text'>2009</span><span class='off-text'> / 2020</span>")
+            } else if (year == 1990) {
+                year += 10
+                dance("no_hs_2000", transition_time)
+                // title change
+            } else if (year == 2000) {
+                year += 19
+                dance("no_hs_2019", transition_time)
+                // title change
+            } else {
+                year = 1970
+                dance("no_hs_1970", 0)
+            }
+
+            // console.log("new year: " + String(year));
+        }
+
+        var timer = d3.interval(update, 3000) //in milliseconds
+
+
+        // // LEGEND --------
+
+        // console.log(color.invertExtent("#fff5f0"))
+
+        var x = d3.scaleLinear()
+            .domain([-20, 20])
+            .rangeRound([600, 860]);
+
+        var g = svg.append("g")
+            .attr("class", "key")
+            .attr("transform", "translate(0,20)");
+
+        g.selectAll("rect")
+            .data(color.range().map(function(d) {
+                d = color.invertExtent(d);
+                if (d[0] == undefined) d[0] = x.domain()[0];
+                if (d[1] == undefined) d[1] = x.domain()[1];
+                return d;
+            }))
+            .join("rect")
+            .attr("height", 8)
+            .attr("x", function(d) { return x(d[0]); })
+            .attr("width", function(d) { return x(d[1]) - x(d[0]); })
+            .attr("fill", function(d) { return color(d[0]); });
+
+        g.append("text")
+            .attr("class", "caption")
+            .attr("x", x.range()[0])
+            .attr("y", -6)
+            .attr("fill", "#000")
+            .attr("text-anchor", "start")
+            .text("Percentage above/below the national average");
+
+        g.call(d3.axisBottom(x)
+            .tickSize(13)
+            .tickFormat(function(x, i) { return i ? x : x + "%"; })
+            .tickValues(color.domain()))
+            .select(".domain")
+            .remove();
+
+    }
+
+
+
+
+
+
+
+
+</script>
